@@ -24,6 +24,9 @@ class CPU:
         # Running
         self.running = True
 
+        # Flag register:
+        self.fl = [0] * 8
+
     def ram_read(self, address):
         """Returns value from memory address"""
 
@@ -84,6 +87,18 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+
+        elif op == "CMP":
+            self.fl[5] = 0
+            self.fl[6] = 0
+            self.fl[7] = 0
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.fl[7] = 1
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.fl[6] = 1
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.fl[5] = 1
+
         # elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -117,6 +132,9 @@ class CPU:
 
         while self.running:
             IR = self.ram[self.pc]
+
+            operand_a = self.ram[self.pc + 1]
+            operand_b = self.ram[self.pc + 2]
 
             # number_to_increase_pc = 1
             num_args = IR >> 6
@@ -201,6 +219,35 @@ class CPU:
                 self.pc = return_address
 
                 self.reg[7] += 1
+
+            # CMP instruction
+            elif IR == 0b10100111:
+                self.alu('CMP', operand_a, operand_b)
+
+            # JMP instruction
+            elif IR == 0b01010100:
+                # Set PC to the address stored in given register
+                self.pc = self.reg[operand_a]
+
+            # JEQ instruction
+            elif IR == 0b01010101:
+                # if equal flag is True
+                if self.fl[7] == 1:
+                    # Set PC to the address stored in given register
+                    self.pc = self.reg[operand_a]
+                else:
+                    # Otherwise increment PC
+                    self.pc += 1 + num_args
+
+            # JNE instruction
+            elif IR == 0b01010110:
+                # if equal flag is False
+                if self.fl[7] == 0:
+                    # Set PC to the address stored in given register
+                    self.pc = self.reg[operand_a]
+                else:
+                    # Otherwise increment PC
+                    self.pc += 1 + num_args
 
             # HLT instruction
             elif IR == 0b00000001:
